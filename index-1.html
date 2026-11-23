@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Weather Dashboard</h1>
+    <p>Check weather around the world</p>
+
+    <div class="search">
+        <input type="text" id="cityInput" placeholder="Enter city name">
+        <button onclick="getWeather()">Search</button>
+    </div>
+
+    <p id="error"></p>
+
+    <div class="weather-card">
+        <div>
+            <p>Current Weather</p>
+            <h2 id="city">Delhi</h2>
+            <h1 id="temp">28°C</h1>
+            <h3 id="condition">Sunny</h3>
+            <p id="feels">Feels like 30°C</p>
+        </div>
+        <div class="icon" id="icon">☀️</div>
+    </div>
+
+    <h3>Today's Highlights</h3>
+
+    <div class="highlights">
+
+        <div class="card">
+            <span>💧</span>
+            <p>Humidity</p>
+            <h2 id="humidity">45%</h2>
+        </div>
+
+        <div class="card">
+            <span>💨</span>
+            <p>Wind Speed</p>
+            <h2 id="wind">12 km/h</h2>
+        </div>
+
+        <div class="card">
+            <span>☁️</span>
+            <p>Clouds</p>
+            <h2 id="clouds">10%</h2>
+        </div>
+
+    </div>
+
+    <h3>5 Day Forecast</h3>
+
+    <div class="forecast" id="forecast"></div>
+
+</div>
+
+<script>
+
+async function getWeather() {
+
+    let city = document.getElementById("cityInput").value.trim();
+    let error = document.getElementById("error");
+
+    if (!city) {
+        error.innerHTML = "Enter city name";
+        return;
+    }
+
+    try {
+
+        error.innerHTML = "Loading...";
+
+        let geo = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+        );
+
+        let location = await geo.json();
+
+        if (!location.results) throw new Error();
+
+        let place = location.results[0];
+
+        let url = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,cloud_cover&daily=weather_code,temperature_2m_max&forecast_days=5&timezone=auto`;
+
+        let response = await fetch(url);
+        let data = await response.json();
+        let w = data.current;
+
+        let icons = ["☀️","🌤️","⛅","☁️","🌫️","🌧️","❄️","⛈️"];
+        let code = w.weather_code;
+        let icon = code === 0 ? icons[0] : code <= 2 ? icons[1] : code === 3 ? icons[3] : code <= 48 ? icons[4] : code <= 67 ? icons[5] : code <= 77 ? icons[6] : code <= 82 ? icons[5] : icons[7];
+
+        document.getElementById("city").innerHTML = place.name;
+        document.getElementById("temp").innerHTML = Math.round(w.temperature_2m) + "°C";
+        document.getElementById("feels").innerHTML = "Feels like " + Math.round(w.apparent_temperature) + "°C";
+        document.getElementById("humidity").innerHTML = w.relative_humidity_2m + "%";
+        document.getElementById("wind").innerHTML = w.wind_speed_10m + " km/h";
+        document.getElementById("clouds").innerHTML = w.cloud_cover + "%";
+        document.getElementById("icon").innerHTML = icon;
+
+        document.getElementById("condition").innerHTML =
+            code === 0 ? "Sunny" : code <= 2 ? "Partly Cloudy" : code === 3 ? "Cloudy" : code <= 48 ? "Foggy" : code <= 67 ? "Rainy" : code <= 77 ? "Snowy" : "Thunderstorm";
+
+        let box = document.getElementById("forecast");
+        box.innerHTML = "";
+
+        data.daily.time.forEach((date, i) => {
+
+            let day = new Date(date + "T12:00:00")
+                .toLocaleDateString("en", {weekday:"short"});
+
+            box.innerHTML += `
+                <div class="day">
+                    <p>${day}</p>
+                    <span>${icons[0]}</span>
+                    <h3>${Math.round(data.daily.temperature_2m_max[i])}°C</h3>
+                </div>
+            `;
+        });
+
+        error.innerHTML = "";
+
+    } catch {
+        error.innerHTML = "City not found! Try again.";
+    }
+}
+
+</script>
+
+</body>
+</html>
